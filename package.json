@@ -1,0 +1,21 @@
+{
+  "name": "astro",
+  "version": "1.0.0",
+  "description": "FNF Style Rhythm Game",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^41.3.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.astro.rhythm",
+    "win": {
+      "target": "portable",
+      "icon": "assets/icon.png"
+    }
+  }
+}

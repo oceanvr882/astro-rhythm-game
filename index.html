@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASTRO | Rhythm</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            user-select: none; 
+            -webkit-user-drag: none; 
+            cursor: default;
+        }
+        .glass-panel.split-layout {
+            max-width: 1100px;
+            display: flex;
+            gap: 3rem;
+            align-items: stretch;
+        }
+
+        .song-list-container {
+            flex: 1.2;
+        }
+
+        .song-detail-container {
+            flex: 0.8;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .preview-visualizer {
+            display: flex;
+            gap: 5px;
+            height: 40px;
+            align-items: center;
+            margin-bottom: 2rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .preview-visualizer span {
+            width: 6px;
+            background: var(--primary);
+            border-radius: 3px;
+            animation: bounce 0.8s infinite ease-in-out;
+        }
+
+        .preview-visualizer span:nth-child(2) { animation-delay: 0.1s; height: 30px; }
+        .preview-visualizer span:nth-child(3) { animation-delay: 0.2s; height: 40px; }
+        .preview-visualizer span:nth-child(4) { animation-delay: 0.3s; height: 20px; }
+
+        @keyframes bounce {
+            0%, 100% { height: 10px; }
+            50% { height: 40px; }
+        }
+
+        .playing-preview .preview-visualizer { opacity: 1; }
+
+        .detail-content { text-align: center; width: 100%; }
+        #detail-title { font-family: 'Orbitron', sans-serif; font-size: 2rem; margin-bottom: 0.5rem; }
+        #detail-artist { color: var(--text-secondary); margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 2px; }
+        .detail-divider { border: 0; border-top: 1px solid var(--glass-border); margin: 2rem 0; }
+        .detail-stats { display: flex; justify-content: space-around; font-family: 'Orbitron'; color: var(--primary); margin-bottom: 2rem; }
+        .play-now-btn { width: 100%; margin: 0; }
+    </style>
+</head>
+<body>
+    <canvas id="galaxy-canvas"></canvas>
+
+    <div id="ui-container">
+
+        <!-- Tutorial Screen -->
+        <div id="tutorial-screen" class="screen">
+            <div class="glass-panel" style="max-width: 700px; text-align: center; position: relative;">
+                <div id="tut-step-indicator" style="font-family:'Orbitron'; font-size:0.7rem; color:var(--text-secondary); letter-spacing:3px; margin-bottom:1.5rem;">STEP 1 / 5</div>
+                
+                <div id="tut-slides">
+                    <!-- Slide 1: Welcome -->
+                    <div class="tut-slide active" data-step="1">
+                        <h1 class="glow-text" style="font-size:3.5rem; margin-bottom:1.5rem;">ASTRO</h1>
+                        <p style="font-size:1.2rem; color:var(--text-secondary); line-height:1.8; margin-bottom:1rem;">
+                            Welcome to the galaxy's hottest rhythm game.<br>
+                            Let's get you ready to play.
+                        </p>
+                        <div style="font-size:4rem; margin:2rem 0;">🚀</div>
+                    </div>
+
+                    <!-- Slide 2: Arrow Keys -->
+                    <div class="tut-slide" data-step="2">
+                        <h2 style="font-family:'Orbitron'; font-size:2rem; margin-bottom:1.5rem;">HIT THE NOTES</h2>
+                        <p style="color:var(--text-secondary); line-height:1.8; margin-bottom:2rem;">
+                            Arrows fall from above. When they reach the receptors at the bottom,<br>
+                            press the matching key to score points.
+                        </p>
+                        <div class="tut-keys-demo">
+                            <div class="tut-key" style="background:#c2410c;">← LEFT</div>
+                            <div class="tut-key" style="background:#15803d;">↑ UP</div>
+                            <div class="tut-key" style="background:#1d4ed8;">↓ DOWN</div>
+                            <div class="tut-key" style="background:#be185d;">→ RIGHT</div>
+                        </div>
+                        <p style="color:var(--accent); margin-top:1.5rem; font-family:'Orbitron'; font-size:0.8rem;">
+                            You can change these keys in SETTINGS anytime!
+                        </p>
+                    </div>
+
+                    <!-- Slide 3: Timing -->
+                    <div class="tut-slide" data-step="3">
+                        <h2 style="font-family:'Orbitron'; font-size:2rem; margin-bottom:1.5rem;">TIMING IS KEY</h2>
+                        <p style="color:var(--text-secondary); line-height:1.8; margin-bottom:2rem;">
+                            The closer you hit to the beat, the better your rating!
+                        </p>
+                        <div class="tut-ratings">
+                            <div class="tut-rating" style="color:#22d3ee;">SICK <span>• Perfect timing</span></div>
+                            <div class="tut-rating" style="color:#4ade80;">GOOD <span>• Close enough</span></div>
+                            <div class="tut-rating" style="color:#facc15;">BAD <span>• Barely made it</span></div>
+                            <div class="tut-rating" style="color:#f87171;">MISS <span>• Health drops!</span></div>
+                        </div>
+                        <p style="color:var(--text-secondary); margin-top:1.5rem; font-size:0.9rem;">
+                            Build combos for bonus points. If your health hits zero, you fail!
+                        </p>
+                    </div>
+
+                    <!-- Slide 4: Menu -->
+                    <div class="tut-slide" data-step="4">
+                        <h2 style="font-family:'Orbitron'; font-size:2rem; margin-bottom:1.5rem;">EXPLORE THE MENU</h2>
+                        <p style="color:var(--text-secondary); line-height:1.8; margin-bottom:2rem;">
+                            The lobby has everything you need.
+                        </p>
+                        <div class="tut-menu-items">
+                            <div class="tut-menu-item">
+                                <div class="tut-menu-icon">🎵</div>
+                                <div><strong>TRACKS</strong><br><span>Click a song to preview it, then hit PLAY NOW</span></div>
+                            </div>
+                            <div class="tut-menu-item">
+                                <div class="tut-menu-icon">⚙️</div>
+                                <div><strong>SETTINGS</strong><br><span>Change keybinds, volume, and scroll speed</span></div>
+                            </div>
+                            <div class="tut-menu-item">
+                                <div class="tut-menu-icon">🛒</div>
+                                <div><strong>SHOP</strong><br><span>Buy cosmetic hit effects with coins you earn</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide 5: Ready -->
+                    <div class="tut-slide" data-step="5">
+                        <h1 class="glow-text" style="font-size:2.5rem; margin-bottom:1.5rem;">YOU'RE READY</h1>
+                        <p style="font-size:1.2rem; color:var(--text-secondary); line-height:1.8; margin-bottom:1rem;">
+                            Pick a song and show the galaxy what you've got.
+                        </p>
+                        <div style="font-size:4rem; margin:2rem 0;">🌌</div>
+                        <p style="color:var(--accent); font-family:'Orbitron'; font-size:0.8rem;">
+                            Good luck, pilot.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:1rem; justify-content:center; margin-top:2rem;">
+                    <button class="btn" id="tut-skip-btn" style="background:transparent; border:1px solid var(--glass-border); padding:0.8rem 2rem; font-size:0.9rem;">SKIP</button>
+                    <button class="btn" id="tut-next-btn" style="padding:0.8rem 3rem; font-size:0.9rem;">NEXT →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Song Selection -->
+        <div id="song-selection" class="screen">
+            <div class="header-bar">
+                <div class="player-status">
+                    <div class="rank-badge" id="player-rank-display">LOADING...</div>
+                    <div class="xp-bar-container">
+                        <span id="player-xp-display">XP: 0</span>
+                    </div>
+                </div>
+                <div class="menu-actions">
+                    <div id="pass-badge" class="astro-pass-badge" style="display:none;">ASTRO PASS</div>
+                    <div class="coin-display"><div class="coin-icon"></div> <span id="menu-coin-count">0</span></div>
+                    <button class="icon-btn" id="open-pass-btn" style="color:#facc15;">PASS</button>
+                    <button class="icon-btn" id="open-editor-btn" style="display:none;">EDITOR</button>
+                    <button class="icon-btn" id="open-profile-btn">PROFILE</button>
+                    <button class="icon-btn" id="open-shop-btn">SHOP</button>
+                    <button class="icon-btn" id="open-settings-btn">SETTINGS</button>
+                </div>
+            </div>
+            <div class="glass-panel split-layout">
+                <div class="song-list-container">
+                    <h2 class="section-title">TRACKS</h2>
+                    <div id="song-list">
+                        <!-- Songs will be injected by JavaScript -->
+                    </div>
+                </div>
+                <div class="song-detail-container" id="song-detail">
+                    <div class="detail-content">
+                        <div class="preview-visualizer">
+                            <span></span><span></span><span></span><span></span>
+                        </div>
+                        <h2 id="detail-title">SELECT A SONG</h2>
+                        <p id="detail-artist">Choose a track to preview</p>
+                        <hr class="detail-divider">
+                        <div class="detail-stats">
+                            <span id="detail-bpm">--- BPM</span>
+                            <span id="detail-diff">---</span>
+                        </div>
+                        <button class="btn play-now-btn" id="play-button" style="display:none;">PLAY NOW</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gameplay Screen -->
+        <div id="gameplay-screen" class="screen">
+            <div id="game-ui">
+                <div class="score-container">
+                    <div id="score">000000</div>
+                    <div id="accuracy">ACCURACY: 100%</div>
+                </div>
+                <div id="health-bar-container">
+                    <div id="health-bar">
+                        <div id="health-fill"></div>
+                        <div id="health-mid"></div>
+                    </div>
+                </div>
+                <div id="combo-display">
+                    <div id="combo-count">0</div>
+                    <div id="combo-label">COMBO</div>
+                </div>
+            </div>
+            
+            <div id="lanes-container">
+                <!-- Lanes: Left, Up, Down, Right (0, 1, 2, 3) -->
+                <div class="lane" id="lane-0">
+                    <div class="receptor" data-key="ArrowLeft"></div>
+                </div>
+                <div class="lane" id="lane-1">
+                    <div class="receptor" data-key="ArrowUp"></div>
+                </div>
+                <div class="lane" id="lane-2">
+                    <div class="receptor" data-key="ArrowDown"></div>
+                </div>
+                <div class="lane" id="lane-3">
+                    <div class="receptor" data-key="ArrowRight"></div>
+                </div>
+            </div>
+
+            <div id="rating-popup"></div>
+        </div>
+
+        <!-- Pause Screen -->
+        <div id="pause-screen" class="screen">
+            <div class="glass-panel" style="text-align: center; max-width: 300px;">
+                <h1 class="glow-text" style="font-size: 2rem; margin-bottom: 2rem;">PAUSED</h1>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <button class="btn" id="pause-resume-btn">RESUME</button>
+                    <button class="btn" id="pause-retry-btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">RETRY</button>
+                    <button class="btn" id="pause-menu-btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);">QUIT TO MENU</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen">
+            <div class="glass-panel" style="max-width: 600px;">
+                <h2 class="section-title">SETTINGS</h2>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label>KEYBINDINGS (Click to rebind)</label>
+                        <div class="bind-row">
+                            <div class="bind-key" id="bind-0" data-idx="0">LEFT</div>
+                            <div class="bind-key" id="bind-1" data-idx="1">UP</div>
+                            <div class="bind-key" id="bind-2" data-idx="2">DOWN</div>
+                            <div class="bind-key" id="bind-3" data-idx="3">RIGHT</div>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label>EQUIPPED EFFECT</label>
+                        <div id="active-effect-display" style="font-family:'Orbitron'; color:var(--accent);">DEFAULT</div>
+                    </div>
+                    <div class="setting-group">
+                        <label>SCROLL SPEED</label>
+                        <input type="range" id="scroll-speed-input" min="200" max="800" step="50">
+                        <span id="scroll-speed-val">400</span>
+                    </div>
+                    <div class="setting-group">
+                        <label>VOLUME</label>
+                        <input type="range" id="volume-input" min="0" max="1" step="0.1">
+                        <span id="volume-val">70%</span>
+                    </div>
+                </div>
+                <button class="btn" id="close-settings-btn">BACK</button>
+            </div>
+        </div>
+
+        <!-- NEW RITEM BEAT SHOP -->
+        <div id="shop-screen" class="screen">
+            <style>
+                .shop-root { min-height: 600px; background: #07091a; border-radius: 16px; padding: 28px 24px 36px; position: relative; overflow: hidden; font-family: 'Orbitron', sans-serif; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+                .stars { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: 16px; }
+                .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle var(--d) ease-in-out infinite; opacity: 0; }
+                @keyframes twinkle { 0%,100%{opacity:0} 50%{opacity:var(--op)} }
+                .nebula { position: absolute; border-radius: 50%; filter: blur(60px); pointer-events: none; opacity: 0.5; }
+                .shop-title { text-align: center; font-size: 22px; font-weight: 700; color: #e0cfff; letter-spacing: 3px; margin-bottom: 4px; text-shadow: 0 0 18px #9f6fff88; }
+                .shop-subtitle { text-align: center; font-size: 10px; color: #6a7baa; letter-spacing: 4px; margin-bottom: 22px; }
+                .coins-bar { display: flex; align-items: center; justify-content: flex-end; gap: 7px; margin-bottom: 20px; }
+                .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+                .tab { flex: 1; padding: 9px 0; text-align: center; font-size: 11px; font-weight: 500; letter-spacing: 2px; border-radius: 8px; cursor: pointer; border: 1.5px solid #2a2f55; color: #5a6498; background: #0d1230; transition: all 0.2s; }
+                .tab.active { background: #1a1160; border-color: #6f4fff; color: #c9b8ff; box-shadow: 0 0 14px #6f4fff44; }
+                .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; max-height: 400px; overflow-y: auto; padding: 10px; }
+                .item-card { background: #0d1230; border: 1.5px solid #1e2450; border-radius: 12px; padding: 16px 10px 14px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+                .item-card:hover { border-color: #5a3fbf; background: #12194a; transform: translateY(-2px); }
+                .item-card.equipped { border-color: #2fa856; background: #0c2318; box-shadow: 0 0 16px #2fa85633; }
+                .item-badge { position: absolute; top: -1px; right: -1px; font-size: 8px; letter-spacing: 1px; font-weight: 700; padding: 3px 7px; border-radius: 0 10px 0 8px; }
+                .badge-equipped { background: #2fa856; color: #d0fff0; }
+                .badge-owned { background: #1b6e3a; color: #a0f0c0; }
+                .item-icon { width: 58px; height: 58px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 28px; background: #080c22; border: 1px solid #1e2450; }
+                .item-name { font-size: 10px; color: #b0b8e8; letter-spacing: 1.5px; font-weight: 500; }
+                .item-rarity { font-size: 8px; letter-spacing: 2px; font-weight: 700; margin-top: -4px; }
+                .r-common { color: #7080b0; }
+                .r-rare { color: #5ab4ff; }
+                .r-epic { color: #b060ff; }
+                .r-legendary { color: #f7b733; }
+                .item-price { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: #f7e07a; margin-top: 2px; }
+                .btn-action { width: 100%; padding: 7px 0; border-radius: 7px; font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 2px; cursor: pointer; border: none; transition: all 0.15s; }
+                .btn-buy { background: #5a2fff; color: #e0d4ff; }
+                .btn-equip { background: #0f6e3a; color: #a0ffcc; }
+                .btn-equipped { background: #134d28; color: #56d88a; pointer-events: none; }
+                .section-label { font-size: 9px; color: #3a4580; letter-spacing: 3px; font-weight: 700; margin-bottom: 12px; padding-left: 2px; }
+                .toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1a0f40; border: 1.5px solid #6f4fff; color: #c9b8ff; font-size: 10px; letter-spacing: 2px; padding: 8px 22px; border-radius: 20px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; }
+                .toast.show { opacity: 1; }
+            </style>
+            <div class="shop-root" id="shopRoot" style="max-width: 900px; width: 90vw;">
+                <div class="stars" id="starsLayer"></div>
+                <div class="nebula" style="width:220px;height:220px;background:#2a0a5a;top:-60px;left:-40px;"></div>
+                <div class="nebula" style="width:180px;height:180px;background:#071a40;bottom:-40px;right:-30px;"></div>
+
+                <div class="shop-title">COSMIC SHOP</div>
+                <div class="shop-subtitle">RITEM BEAT</div>
+
+                <div class="coins-bar">
+                    <div class="coin-icon"></div>
+                    <span class="coin-val" id="coinDisplay">0</span>
+                </div>
+
+                <div class="tabs">
+                    <div class="tab active" id="tabArrows" data-cat="arrow">&#9658; ARROW SKINS</div>
+                    <div class="tab" id="tabEffects" data-cat="effect">&#10024; EFFECTS</div>
+                </div>
+
+                <div class="section-label" id="secLabel">ARROW SKINS</div>
+
+                <div class="items-grid" id="itemsGrid"></div>
+                
+                <button class="btn" id="close-shop-btn" style="margin-top: 2rem; width:100%; background: #1a1160; border: 1px solid #6f4fff; font-family:'Orbitron';">EXIT SHOP</button>
+                <div class="toast" id="toast"></div>
+            </div>
+        </div>
+
+        <!-- INTEGRATED ASTRO PASS (Season 3: Void Ascendant) -->
+        <div id="pass-screen" class="screen">
+            <div id="r" style="max-width: 900px; width: 90vw;">
+                <canvas id="cv"></canvas>
+                <div class="neb" style="width:320px;height:200px;top:-60px;left:-50px;background:radial-gradient(ellipse,#6d28d9 0%,transparent 70%);animation-delay:0s;"></div>
+                <div class="neb" style="width:260px;height:180px;top:30%;right:-40px;background:radial-gradient(ellipse,#0e7490 0%,transparent 70%);animation-delay:3.5s;"></div>
+                <div class="neb" style="width:200px;height:160px;bottom:-20px;left:35%;background:radial-gradient(ellipse,#7c3aed 0%,transparent 70%);animation-delay:6s;"></div>
+
+                <!-- SCREEN 1: BUY -->
+                <div class="sc on" id="pass-s1" style="gap:22px;justify-content:center;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                        <div class="eyebrow">Season 3 · Astro Pass</div>
+                        <div class="big-title">Void<br>Ascendant</div>
+                        <div class="sub">Unlock 100 tiers of cosmic rewards — skins, gliders, ships, beat maps & more.</div>
+                    </div>
+                    <div class="pass-card">
+                        <div class="pass-card-sh"></div>
+                        <div class="pass-head"><div class="pass-name">Astro Pass</div><div class="pass-badge">Season 3</div></div>
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            <div class="perk"><div class="perk-dot" style="background:#a78bfa"></div><div class="perk-txt">20+ exclusive key effects</div></div>
+                            <div class="perk"><div class="perk-dot" style="background:#38bdf8"></div><div class="perk-txt">Custom arrows & layout editor</div></div>
+                            <div class="perk"><div class="perk-dot" style="background:#f472b6"></div><div class="perk-txt">Song creator + beat map editor</div></div>
+                            <div class="perk"><div class="perk-dot" style="background:#fbbf24"></div><div class="perk-txt">Void Ascendant legendary skin</div></div>
+                            <div class="perk"><div class="perk-dot" style="background:#34d399"></div><div class="perk-txt">Soundpack downloads + XP boost</div></div>
+                        </div>
+                        <div class="price-row"><div class="price">950</div><div class="price-u">CREDITS</div><div style="flex:1"></div><div class="price-old">1,200</div></div>
+                    </div>
+                    <div class="row">
+                        <button class="btn btn-s" id="pass-lobby-btn">BACK TO LOBBY</button>
+                        <button class="btn btn-s" id="pass-preview-btn">Preview Contents</button>
+                        <button class="btn btn-p" id="pass-get-btn">Get Astro Pass</button>
+                    </div>
+                    <div style="font-size:11px;color:rgba(100,116,139,.45);letter-spacing:.08em;">Limited offer · 18 days remaining</div>
+                    <button class="btn" id="close-pass-btn" style="background:transparent; color:rgba(255,255,255,0.3); border:none; margin-top:10px;">LATER</button>
+                </div>
+
+                <!-- SCREEN 2: CONFIRM -->
+                <div class="sc" id="pass-s2" style="gap:22px;justify-content:center;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                        <div class="eyebrow">Order Summary</div>
+                        <div style="font-size:22px;font-weight:800;color:#e2d9ff;letter-spacing:.04em;">Confirm Purchase</div>
+                    </div>
+                    <div class="cbox">
+                        <div style="font-size:15px;font-weight:700;color:#e2d9ff;text-align:center;letter-spacing:.05em;">Astro Pass · Season 3</div>
+                        <div class="ci"><span class="cl">Item</span><span class="cv2">Void Ascendant Pass</span></div>
+                        <div class="ci"><span class="cl">Current Tier</span><span class="cv2">Tier 12 → All tiers</span></div>
+                        <div class="ci"><span class="cl">Includes</span><span class="cv2">Effects, Studio, Arrows</span></div>
+                        <div class="ci"><span class="cl">Original Price</span><span class="cv2" style="text-decoration:line-through;color:rgba(100,116,139,.4)">1,200 Credits</span></div>
+                        <div class="cdiv"></div>
+                        <div class="ci"><span class="cl">Total</span><span class="ctot">950 Credits</span></div>
+                    </div>
+                    <div class="row">
+                        <button class="btn btn-s" id="pass-cancel-btn">Cancel</button>
+                        <button class="btn btn-g" id="pass-confirm-btn">Confirm · 950 Credits</button>
+                    </div>
+                </div>
+
+                <!-- SCREEN 3: PROCESSING -->
+                <div class="sc" id="pass-s3" style="gap:18px;justify-content:center;">
+                    <svg class="spin" viewBox="0 0 72 72" width="72" height="72">
+                        <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(167,139,250,.12)" stroke-width="3"/>
+                        <circle cx="36" cy="36" r="30" fill="none" stroke="url(#rg)" stroke-width="3" stroke-dasharray="60 130" stroke-linecap="round"/>
+                        <defs><linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient></defs>
+                    </svg>
+                    <div style="font-size:18px;font-weight:800;color:#e2d9ff;letter-spacing:.06em;text-transform:uppercase;">Processing</div>
+                    <div class="proc" id="pass-pmsg">Contacting astro servers...</div>
+                    <div style="width:200px;height:2px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden;">
+                        <div id="pass-pbar" style="height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#38bdf8);border-radius:2px;transition:width .4s ease;"></div>
+                    </div>
+                </div>
+
+                <!-- SCREEN 4: SUCCESS -->
+                <div class="sc" id="pass-s4" style="gap:0;justify-content:center;padding-top:40px;">
+                    <div class="chk-wrap">
+                        <div class="chk-r2"></div><div class="chk-r1"></div>
+                        <div class="chk-c"><svg width="46" height="46" viewBox="0 0 46 46" fill="none"><path d="M10 23L19 32L36 14" stroke="#a78bfa" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    </div>
+                    <div class="suc-title">Pass Unlocked!</div>
+                    <div class="suc-sub">Welcome to the void, commander.</div>
+                    <div class="chips">
+                        <div class="chip g">Void Skin</div>
+                        <div class="chip">20+ Effects</div>
+                        <div class="chip">Custom Arrows</div>
+                        <div class="chip g">Song Creator</div>
+                        <div class="chip">Beat Maps</div>
+                        <div class="chip">Layout Editor</div>
+                        <div class="chip">Soundpacks</div>
+                        <div class="chip">+ 93 tiers</div>
+                    </div>
+                    <div class="row">
+                        <button class="btn btn-p" id="pass-explore-btn">Explore Your Pass</button>
+                    </div>
+                </div>
+
+                <!-- SCREEN 5: SHOWCASE -->
+                <div class="sc" id="pass-s5" style="gap:18px;padding-top:28px;padding-bottom:60px;justify-content:flex-start;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;">
+                        <div class="eyebrow">Everything Included</div>
+                        <div class="big-title" style="font-size:28px;">Astro Pass</div>
+                    </div>
+
+                    <div class="sec-lbl">Effects & visuals</div>
+                    <div class="grid">
+                        <div class="card"><div class="card-sh"></div><div class="card-new">New</div><div class="card-t">20+ Key Effects</div><div class="card-d">Splash, nova, vortex, plasma, hologram & more on every hit.</div><div class="card-tag">effects</div></div>
+                        <div class="card"><div class="card-sh"></div><div class="card-t">Beat Trails</div><div class="card-d">Glowing wave trails on every note — ripple, sonic boom, aurora.</div><div class="card-tag">visual</div></div>
+                        <div class="card gld"><div class="card-sh"></div><div class="card-new" style="background:linear-gradient(135deg,#b45309,#d97706);">Gold</div><div class="card-t">Void Skin Pack</div><div class="card-d">Full animated skin — keys, panels, cursor & background matched.</div><div class="card-tag">exclusive</div></div>
+                        <div class="card"><div class="card-sh"></div><div class="card-t">Layout Customs</div><div class="card-d">Resize, recolor & rearrange every panel. Save 10 layouts.</div><div class="card-tag">layouts</div></div>
+                    </div>
+
+                    <div class="sec-lbl">Music studio</div>
+                    <div class="grid">
+                        <div class="card wide"><div class="card-sh"></div><div class="card-new">Exclusive</div><div class="card-t">Song Creator</div><div class="card-d">Build original tracks with the 32-step sequencer. Lay down beats, melodies and export to share.</div><div class="card-tag">studio</div></div>
+                        <div class="card wide gld"><div class="card-sh"></div><div class="card-t">Beat Map Editor</div><div class="card-d">Design full beat maps — place notes, set BPM, publish for other players to play.</div><div class="card-tag" style="background:rgba(251,191,36,.15);color:#fcd34d;">maps</div></div>
+                    </div>
+                    
+                    <div class="cta-box">
+                        <div class="cta-sh"></div>
+                        <div class="eyebrow">Season 3 · Limited Offer</div>
+                        <div style="font-size:20px;font-weight:900;color:#e2d9ff;letter-spacing:.04em;text-transform:uppercase;text-align:center;">Get the Astro Pass</div>
+                        <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:32px;font-weight:900;color:#fbbf24;">950</span><span style="font-size:12px;color:rgba(148,163,184,.5);letter-spacing:.1em;">CREDITS</span></div>
+                        <div class="row">
+                            <button class="btn btn-s" id="pass-lobby-btn-2">BACK TO LOBBY</button>
+                            <button class="btn btn-s" id="pass-preview-back-btn">Back to Shop</button>
+                            <button class="btn btn-p" id="pass-buy-bottom-btn">Unlock Everything</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Beatmap Editor Screen -->
+        <div id="editor-screen" class="screen">
+            <div class="glass-panel" style="max-width: 1000px; width: 90vw;">
+                <div class="editor-layout">
+                    <div class="editor-preview">
+                        <div id="editor-lanes">
+                             <div class="editor-lane"></div>
+                             <div class="editor-lane"></div>
+                             <div class="editor-lane"></div>
+                             <div class="editor-lane"></div>
+                        </div>
+                    </div>
+                    <div class="editor-controls">
+                        <h2 class="section-title">MAP EDITOR</h2>
+                        <div class="input-group">
+                            <label>SONG URL (MP3)</label>
+                            <input type="text" id="editor-url" placeholder="https://...">
+                        </div>
+                        <div class="input-group">
+                            <label>BPM</label>
+                            <input type="number" id="editor-bpm" value="120">
+                        </div>
+                        <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <button class="btn" id="editor-record-btn">START RECORDING</button>
+                            <button class="btn" id="editor-save-btn">SAVE MAP</button>
+                            <p style="font-size: 0.7rem; color: var(--text-secondary);">Press Arrow Keys or DFJK to record notes while song plays!</p>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn" id="close-editor-btn" style="margin-top: 2rem;">EXIT ED        <!-- ULTRA PREMIUM COMMAND CENTER (PROFILE REWORK) -->
+        <div id="profile-screen" class="screen">
+            <div class="command-center">
+                <!-- Wing 1: Pilot Identity -->
+                <div class="cc-wing pilot-wing">
+                    <div class="glass-panel-cc">
+                        <div class="pilot-header">
+                            <div class="profile-avatar main-avatar"></div>
+                            <h2 id="cc-rank-title" class="rank-badge-lg">STARDUST</h2>
+                            <p class="pilot-tag">PILOT ID: ASTRO-99</p>
+                        </div>
+                        <div class="cc-nav">
+                            <button class="cc-nav-item active" data-tab="cc-stats">MISSION STATS</button>
+                            <button class="cc-nav-item" data-tab="cc-global">GLOBAL SECTOR</button>
+                            <button class="cc-nav-item" data-tab="cc-ladder">RANK LADDER</button>
+                            <button class="cc-nav-item" data-tab="cc-logs">SYSTEM LOGS</button>
+                        </div>
+                        <button class="btn cc-exit-btn" id="cc-close-btn">EXIT COMMAND CENTER</button>
+                    </div>
+                </div>
+
+                <!-- Wing 2: Mission Core -->
+                <div class="cc-core">
+                    <div id="cc-stats" class="cc-content active">
+                        <div class="glass-panel-cc core-panel">
+                            <div class="core-header">
+                                <h1 class="glow-text">MISSION DATA</h1>
+                                <div class="xp-progress-large">
+                                    <div class="xp-fill" id="cc-xp-fill" style="width: 0%"></div>
+                                    <span id="cc-xp-val">XP: 0 / 1M</span>
+                                </div>
+                            </div>
+                            <div class="core-stats-grid">
+                                <div class="stat-box-lg">
+                                    <label>TOTAL POINTS</label>
+                                    <span id="cc-total-score">0</span>
+                                </div>
+                                <div class="stat-box-lg">
+                                    <label>SONGS CLEARED</label>
+                                    <span id="cc-cleared">0</span>
+                                </div>
+                                <div class="stat-box-lg">
+                                    <label>GALAXY COINS</label>
+                                    <span id="cc-coins">0</span>
+                                </div>
+                            </div>
+                            <div class="core-table">
+                                <h3>PERSONAL BESTS</h3>
+                                <div id="cc-pb-list" class="modern-scroll-list"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="cc-global" class="cc-content">
+                        <div class="glass-panel-cc core-panel">
+                            <h1 class="glow-text">GLOBAL SECTOR</h1>
+                            <div id="cc-global-list" class="modern-scroll-list" style="margin-top: 1rem;"></div>
+                        </div>
+                    </div>
+
+                    <div id="cc-ladder" class="cc-content">
+                        <div class="glass-panel-cc core-panel">
+                            <h1 class="glow-text">RANK LADDER</h1>
+                            <div id="cc-ladder-list" class="modern-scroll-list" style="margin-top: 1rem;"></div>
+                        </div>
+                    </div>
+
+                    <div id="cc-logs" class="cc-content">
+                        <div class="glass-panel-cc core-panel">
+                            <h1 class="glow-text">SYSTEM DIAGNOSTICS</h1>
+                            <div id="debug-console" class="modern-scroll-list console-box" style="margin-top: 1rem;">
+                                <div class="log-entry system">-- BOOTING COMMAND CENTER --</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+iv>
+                </div>
+            </div>
+        </div>
+        <div id="results-screen" class="screen">
+            <div class="glass-panel">
+                <h1 class="glow-text" id="result-title">CLEAR!</h1>
+                <div class="results-grid">
+                    <div class="result-item">RANK: <span id="final-rank">S</span></div>
+                    <div class="result-item">SCORE: <span id="final-score">0</span></div>
+                    <div class="result-item">MAX COMBO: <span id="final-combo">0</span></div>
+                    <div class="result-item" style="color: #fbbf24;">GALAXY COINS: +<span id="earned-coins">0</span></div>
+                </div>
+                <button class="btn" id="retry-btn">RETRY</button>
+                <button class="btn" id="menu-btn">MENU</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/settings.js"></script>
+    <script src="js/galaxy.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/beatmaps.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
